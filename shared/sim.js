@@ -325,7 +325,7 @@
         s.l--; p.cd = w.cd * cdm; p.swing = 0.25; p.swingN++; p.invDirty = true;
         let spread = (aiming ? w.aimSpread : w.spread) * (Math.hypot(p.vx, p.vz) > 1 ? 1.6 : 1) * (p.sprinting ? 1.6 : 1) * (p.crouch ? 0.75 : 1);
         if (p.wclass && C.WEAPON_CLASS[w.id] === p.wclass && p.advs.has('weapon_training')) spread *= 0.85;
-        this.spawnProjectile(p, w.id, w.dmg, w.speed, w.gravity, spread, w.ammo, s);
+        this.spawnProjectile(p, w.id, w.dmg, w.speed, w.gravity, spread, w.ammo, s, aiming);
         this.bcast({ t: 'shot', i: p.id, w: w.id, x: R2(p.x), z: R2(p.z) }); this.noise(p.x, p.z, 28, p.id);
         this.wear(p, s, 1);
         if (s && p.inv[p.sel] === s && s.l <= 0 && this.count(p, w.ammo) > 0) this.startReload(p);
@@ -334,7 +334,7 @@
       if (aiming && w.throw && s) {   // thrown weapon
         const it = p.inv[p.sel]; if (!it) return;
         p.inv[p.sel] = null; p.invDirty = true; p.cd = 0.7; p.swing = 0.3; p.swingN++;
-        this.spawnProjectile(p, w.id, w.throw.dmg, w.throw.speed, w.throw.gravity, 1.2, 'thrown', it);
+        this.spawnProjectile(p, w.id, w.throw.dmg, w.throw.speed, w.throw.gravity, 1.2, 'thrown', it, true);
         this.bcast({ t: 'shot', i: p.id, w: w.id, x: R2(p.x), z: R2(p.z), th: 1 }); this.noise(p.x, p.z, 14, p.id); return;
       }
       // melee
@@ -367,9 +367,17 @@
     }
     noDamage(q) { return q.role === 'dummyGhost'; }
 
-    spawnProjectile(p, wid, dmg, speed, grav, spreadDeg, kind, item) {
+    spawnProjectile(p, wid, dmg, speed, grav, spreadDeg, kind, item, aim) {
       const ey = Move.eyeY(p);
-      let yaw = p.yaw + (this.rng() - 0.5) * 2 * spreadDeg * Math.PI / 180 * 0.6, pitch = p.pitch + (this.rng() - 0.5) * 2 * spreadDeg * Math.PI / 180 * 0.6;
+      let by = p.yaw, bp = p.pitch;
+      if (!p.isBot) {   // humans use an over-the-shoulder camera: converge the shot onto the camera's line of sight (45 m) so it lands where the crosshair points
+        const cp0 = Math.cos(p.pitch), d0x = -Math.sin(p.yaw) * cp0, d0y = Math.sin(p.pitch), d0z = -Math.cos(p.yaw) * cp0;
+        const dist = aim ? 1.9 : 3.5, sh = aim ? 0.75 : 0.55, rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+        const tx = p.x - d0x * dist + rx * sh + d0x * 45, ty = ey - d0y * dist + d0y * 45, tz = p.z - d0z * dist + rz * sh + d0z * 45;
+        const vx = tx - p.x, vy = ty - ey, vz = tz - p.z, hl = Math.hypot(vx, vz);
+        if (hl > 1) { by = Math.atan2(-vx, -vz); bp = Math.atan2(vy, hl); }
+      }
+      let yaw = by + (this.rng() - 0.5) * 2 * spreadDeg * Math.PI / 180 * 0.6, pitch = bp + (this.rng() - 0.5) * 2 * spreadDeg * Math.PI / 180 * 0.6;
       const cp = Math.cos(pitch);
       const dx = -Math.sin(yaw) * cp, dy = Math.sin(pitch), dz = -Math.cos(yaw) * cp;
       this.proj.push({ id: this.nextProj++, o: p.id, tm: p.team, wid, kind, dmg, g: grav, x: p.x + dx * 0.6, y: ey - 0.1 + dy * 0.6, z: p.z + dz * 0.6, vx: dx * speed, vy: dy * speed, vz: dz * speed, life: 4, item: kind === 'thrown' ? item : null, sx: p.x, sz: p.z });

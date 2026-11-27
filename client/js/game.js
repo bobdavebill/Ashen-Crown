@@ -21,7 +21,7 @@
     $('p-sens').oninput = e => { G.settings.sens = +e.target.value; G.saveSettings(); }; $('p-vol').oninput = e => { G.settings.vol = +e.target.value; HG.Audio.setVolumes({ master: G.settings.vol }); G.saveSettings(); };
     $('inv-close').onclick = () => G.toggleInv(false);
   };
-  G.loadSettings = function () { try { Object.assign(G.settings, JSON.parse(localStorage.getItem('hg_settings') || '{}')); } catch (e) { /* */ } $('p-sens').value = G.settings.sens; $('p-vol').value = G.settings.vol; HG.Audio.setVolumes({ master: G.settings.vol }); if (R) R.setQuality(G.settings.quality); };
+  G.loadSettings = function () { if (G.touch) { try { if (!localStorage.getItem('hg_settings')) G.settings.quality = 'low'; } catch (e) { G.settings.quality = 'low'; } } try { Object.assign(G.settings, JSON.parse(localStorage.getItem('hg_settings') || '{}')); } catch (e) { /* */ } $('p-sens').value = G.settings.sens; $('p-vol').value = G.settings.vol; HG.Audio.setVolumes({ master: G.settings.vol }); if (R) R.setQuality(G.settings.quality); };
   G.saveSettings = function () { try { localStorage.setItem('hg_settings', JSON.stringify(G.settings)); } catch (e) { /* */ } };
 
   /* menu backdrop: slow orbit above a procedurally generated arena */
@@ -41,12 +41,12 @@
       const av = HG.Avatar.create(r.a, { name: r.i === me ? '' : r.n, color: col }); av.root.visible = false; R.scene.add(av.root);
       G.players.set(r.i, { id: r.i, name: r.n, team: r.tm, bot: !!r.b, av, buf: [], alive: true, hp: 100, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, f: 0, w: '', sw: 0, v: 0, col, ally, per: r.per, title: r.t, level: r.l });
     }
-    G.yaw = 0; G.pitch = 0.1; myHp = 100; lastAlive = true;
+    G.yaw = 0; G.pitch = 0.1; myHp = 100; lastAlive = true; $('crosshair').classList.remove('hidden');
     $('hud').classList.remove('hidden'); $('spectate').classList.add('hidden'); $('countdown').textContent = ''; $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('announce').classList.remove('show');
     $('p-hint').textContent = 'Match in progress. The arena does not pause.'; document.querySelector('#pause h2').textContent = 'PAUSED';
     G.setObjectives(G.objectives); HG.UI && HG.UI.onMatchStart(msg);
     HG.Audio.init(); HG.Audio.resume(); HG.Audio.startAmbience(); HG.Audio.startMusic('tense'); R.setTime(w.tod != null ? w.tod : 0.4, 0);
-    $('h-k').textContent = '0'; G.showPause(true, 'CLICK TO ENTER THE ARENA');
+    $('h-k').textContent = '0'; G.showPause(true, G.touch ? 'TAP TO ENTER THE ARENA' : 'CLICK TO ENTER THE ARENA');
   };
   G.stop = function (keepWorld) {
     G.active = false; for (const p of G.players.values()) { R.scene.remove(p.av.root); p.av.dispose && p.av.dispose(); } G.players.clear(); G.loot.clear();
@@ -83,14 +83,14 @@
   }
   function act(a, d) { if (!G.active) return; Net.send({ t: 'act', a, d: d || {} }); }
   G.act = act;
-  G.capture = function () { if (!G.active) return; const cv = $('gl'); try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* */ } G.showPause(false); HG.Audio.resume(); };
+  G.capture = function () { if (!G.active) return; if (G.touch) { G.locked = true; G.showPause(false); HG.Audio.resume(); if (!G.fsTried && G.goFullscreen) { G.fsTried = true; G.goFullscreen(); } return; } const cv = $('gl'); try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* */ } G.showPause(false); HG.Audio.resume(); };
   G.showPause = function (on, title) {
     const el = $('pause'); if (G.invOpen || G.dead && !on) { el.classList.add('hidden'); return; } el.classList.toggle('hidden', !on);
     if (on) { document.querySelector('#pause h2').textContent = title ? 'READY' : 'PAUSED'; $('p-resume').textContent = title || 'RESUME'; }
   };
   G.toggleInv = function (force) {
-    const on = force != null ? force : !G.invOpen; if (G.dead && on) return; G.invOpen = on; $('inv').classList.toggle('hidden', !on);
-    if (on) { G.suppressPause = true; if (document.pointerLockElement) document.exitPointerLock(); G.showPause(false); HG.UI && HG.UI.renderInventory(); setTimeout(() => { G.suppressPause = false; }, 100); }
+    const on = force != null ? force : !G.invOpen; if (G.dead && on) return; G.invOpen = on; $('inv').classList.toggle('hidden', !on); if (G.touch && on) G.locked = false;
+    if (on) { G.suppressPause = true; if (document.pointerLockElement) document.exitPointerLock(); G.showPause(false); HG.UI && (HG.UI._invSig = null, HG.UI.renderInventory()); setTimeout(() => { G.suppressPause = false; }, 100); }
     else G.capture();
   };
   function allyTarget() {
@@ -99,6 +99,7 @@
     return best;
   }
   function nearestAlly(ids) { let b = ids[0], bd = 1e9; for (const id of ids) { const p = G.players.get(id); if (p) { const d = (p.x - ps.x) ** 2 + (p.z - ps.z) ** 2; if (d < bd) { bd = d; b = id; } } } return b; }
+  G.cycleSpectate = d => cycleSpectate(d);
   function cycleSpectate(dir) { const alive = [...G.players.values()].filter(p => p.alive && p.id !== me); if (!alive.length) { specId = 0; return; } let i = alive.findIndex(p => p.id === specId); i = (i + dir + alive.length) % alive.length; specId = alive[i].id; $('spec-name').textContent = alive[i].name; }
 
   /* ---------------------------------------------------------------- network → state */
@@ -179,7 +180,7 @@
   }
   function onAlly(e) {
     const A = HG.Audio, n = (roster.get(e.i) || {}).n || 'A tribute';
-    if (e.k === 'offer') { offerFrom = { id: e.i, name: e.n || n, until: performance.now() + 15000 }; const el = $('ally-prompt'); el.innerHTML = '<b>' + offerFrom.name + '</b> offers an alliance<br><small>[Y] Accept &nbsp; [N] Decline</small>'; el.classList.remove('hidden'); A.play('ally'); setTimeout(() => { if (offerFrom && offerFrom.id === e.i) { offerFrom = null; el.classList.add('hidden'); } }, 15000); }
+    if (e.k === 'offer') { offerFrom = { id: e.i, name: e.n || n, until: performance.now() + 15000 }; const el = $('ally-prompt'); el.innerHTML = '<b>' + offerFrom.name + '</b> offers an alliance<br><small>' + (G.touch ? 'Tap ACCEPT or NO' : '[Y] Accept &nbsp; [N] Decline') + '</small>'; el.classList.remove('hidden'); A.play('ally'); setTimeout(() => { if (offerFrom && offerFrom.id === e.i) { offerFrom = null; el.classList.add('hidden'); } }, 15000); }
     else if (e.k === 'formed') { toast('Alliance formed with ' + n); A.play('ally'); const p = G.players.get(e.i); if (p) p.av.setName(p.name, '#8ab4ff'); }
     else if (e.k === 'broken') { toast('Alliance with ' + n + ' was broken!', true); A.play('betray'); const p = G.players.get(e.i); if (p) p.av.setName(p.name, '#ffffff'); }
   }
@@ -201,7 +202,8 @@
       G.acc += dt; let n = 0;
       while (G.acc >= DT && n < 4) {
         G.acc -= DT; n++; const k = G.keys; let mx = 0, mz = 0; if (k.KeyW || k.ArrowUp) mz += 1; if (k.KeyS || k.ArrowDown) mz -= 1; if (k.KeyD || k.ArrowRight) mx += 1; if (k.KeyA || k.ArrowLeft) mx -= 1;
-        let f = 0; if (k.Space) f |= F.JUMP; if (k.ShiftLeft || k.ShiftRight) f |= F.SPRINT; if (G.crouch) f |= F.CROUCH; if (G.mouse.r && G.locked) f |= F.AIM; if (G.mouse.l && G.locked) f |= F.ATTACK;
+        if (G.touch && G.joy && G.joy.m > 0) { mx = G.joy.x; mz = G.joy.y; }
+        let f = 0; if (k.Space) f |= F.JUMP; if (k.ShiftLeft || k.ShiftRight || (G.touch && G.joy && G.joy.m > 0.92 && mz > 0.2)) f |= F.SPRINT; if (G.crouch) f |= F.CROUCH; if (G.mouse.r && G.locked) f |= F.AIM; if (G.mouse.l && G.locked) f |= F.ATTACK;
         const inp = { s: ++G.seq, mx, mz, y: G.yaw, p: G.pitch, f }; Net.send({ t: 'in', s: inp.s, mx, mz, y: inp.y, p: inp.p, f }); G.pending.push(inp); if (G.pending.length > 90) G.pending.shift();
         if (phase !== 'countdown') { ps.crouch = !!(f & F.CROUCH); Move.step(ps, inp, world, DT); }
       }
@@ -241,11 +243,25 @@
     R.focus.set(cam.position.x, 0, cam.position.z); A.listener(cam.position.x, cam.position.z, yaw);
     if (world) { waterT -= dt; if (waterT < 0) { waterT = 0.6; let n = 0; for (let i = 0; i < 8; i++) { const a = i * 0.785; if (world.inWater(cam.position.x + Math.cos(a) * 9, cam.position.z + Math.sin(a) * 9)) n++; } A.setWater(n / 6 + (ps.inWater ? 0.5 : 0)); } }
     R.update(dt, cam.position.x, cam.position.z);
-    $('crosshair').classList.toggle('aim', aim); $('crosshair').style.display = G.dead || !G.locked ? 'none' : '';
+    updateCrosshair(dt, aim, cam);
     hudT -= dt; if (hudT <= 0) { hudT = 0.066; updateHud(); } mapT -= dt; if (mapT <= 0) { mapT = 0.05; drawMini(); drawCompass(); }
     if (useBar.t > 0) { useBar.t -= dt; const b = $('useBar'); b.style.display = 'block'; b.firstChild.style.width = (100 - useBar.t / useBar.max * 100) + '%'; b.querySelector('span').textContent = useBar.label; } else $('useBar').style.display = 'none';
     for (const p of pings) p.t -= dt; pings = pings.filter(p => p.t > 0);
   };
+  /* crosshair: mirrors the server's spread rules so the reticle size is honest */
+  let xhGap = 10;
+  function updateCrosshair(dt, aim, cam) {
+    const el = $('crosshair'); el.style.display = G.dead || !G.locked ? 'none' : ''; if (G.dead || !G.locked) return;
+    const held = G.inv && G.inv.s[G.inv.sel], wd = held && C.WEAPONS[held[0]]; let mode = 'mel', empty = false, target = 10;
+    if (wd && wd.type === 'ranged') {
+      mode = 'rng'; const moving = Math.hypot(ps.vx || 0, ps.vz || 0) > 1;
+      const deg = (aim ? wd.aimSpread : wd.spread) * (moving ? 1.6 : 1) * (ps.sprinting ? 1.6 : 1) * (G.crouch ? 0.75 : 1);
+      const px = Math.tan(deg * 0.6 * Math.PI / 180) * (innerHeight / 2) / Math.tan(cam.fov * Math.PI / 360);
+      target = Math.min(70, Math.max(4, px)); empty = !held[3];
+    } else if (wd && wd.throw && aim) { mode = 'thr'; }
+    xhGap += (target - xhGap) * Math.min(1, dt * 14); el.style.setProperty('--g', xhGap.toFixed(1) + 'px');
+    if (el.dataset.mode !== mode) el.dataset.mode = mode; el.classList.toggle('aim', aim); el.classList.toggle('empty', empty && mode === 'rng');
+  }
   function hitCam(x, y, z) {
     if (!world) return false; if (y < world.height(x, z) + 0.25) return true;
     for (const o of world.query(x, z, 0.4)) { if (y > (o.top != null ? o.top : 99) || (o.base != null && y < o.base - 1)) continue; if (o.k === 0) { const dx = x - o.x, dz = z - o.z, rr = o.r + 0.15; if (dx * dx + dz * dz < rr * rr) return true; } else if (x > o.minx - 0.15 && x < o.maxx + 0.15 && z > o.minz - 0.15 && z < o.maxz + 0.15) return true; }
@@ -270,7 +286,7 @@
     // prompt
     if (!G.dead && G.locked) { let best = null, bd = C.PLAYER.pickupRange ** 2; for (const L of G.loot.values()) { const dd = (L.x - ps.x) ** 2 + (L.z - ps.z) ** 2; if (dd < bd) { bd = dd; best = L; } }
       let txt = ''; if (best) txt = '<b>E</b> Pick up ' + (best.n > 1 ? best.n + '× ' : '') + C.ITEMS[best.id].name; else if (world && world.inWater(ps.x - Math.sin(G.yaw) * 1.2, ps.z - Math.cos(G.yaw) * 1.2)) txt = '<b>E</b> Drink'; else { const t = allyTarget(); if (t && !(d.al && d.al.includes(t.id)) && Math.hypot(t.x - ps.x, t.z - ps.z) < 12) txt = '<b>T</b> Propose alliance with ' + t.name; }
-      if ($('prompt').innerHTML !== txt) $('prompt').innerHTML = txt; } else $('prompt').innerHTML = '';
+      if (G.touch) txt = txt.replace('<b>E</b> Pick up', '<b>PICK UP</b> →').replace('<b>E</b> Drink', '<b>PICK UP</b> to drink').replace('<b>T</b> Propose alliance with', '<b>ALLY</b> → propose to'); if ($('prompt').innerHTML !== txt) $('prompt').innerHTML = txt; } else $('prompt').innerHTML = '';
     $('net-stat').textContent = (G.local ? 'OFFLINE' : 'ping ' + Net.rtt + 'ms') + ' · ' + fps + ' fps';
   }
   function drawCompass() {
@@ -293,7 +309,7 @@
     for (const p of G.players.values()) { if (p.id === me || !p.alive) continue; const ally = p.ally || (d.al && d.al.includes(p.id)); const dist = Math.hypot(p.x - ps.x, p.z - ps.z); if (!ally && dist > 55) continue; x.fillStyle = ally ? '#7fd68a' : '#ff5a4a'; x.beginPath(); x.arc(p.x * sc, p.z * sc, 3.2, 0, 6.283); x.fill(); }
     for (const q of pings) { x.strokeStyle = '#ff3a2a'; x.lineWidth = 2; x.beginPath(); x.arc(q.x * sc, q.z * sc, (6 + (q.t * 6) % 6), 0, 6.283); x.stroke(); }
     x.restore(); x.fillStyle = '#fff'; x.beginPath(); x.moveTo(S / 2, S / 2 - 7); x.lineTo(S / 2 - 5, S / 2 + 5); x.lineTo(S / 2 + 5, S / 2 + 5); x.closePath(); x.fill();
-    $('minimap').style.width = $('minimap').style.height = (G.bigMap ? 380 : 200) + 'px';
+    $('minimap').style.width = $('minimap').style.height = (G.touch ? (G.bigMap ? 230 : 92) : (G.bigMap ? 380 : 200)) + 'px';
   }
 
   /* leave */

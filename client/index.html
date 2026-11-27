@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0b">
 <title>The Ashen Crown — Tribute Battle Royale</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -23,7 +26,7 @@
   <div id="compass"><canvas id="compass-c" width="520" height="38"></canvas><div id="compass-mark"></div></div>
   <div id="killfeed"></div>
   <div id="objectives"></div>
-  <div id="crosshair"><i></i><i></i><i></i><i></i><u id="hitm"></u></div>
+  <div id="crosshair" data-mode="mel"><i></i><i></i><i></i><i></i><b class="dot"></b><s class="ring"></s><u id="hitm"></u></div>
   <div id="prompt"></div>
   <div id="useBar"><div></div><span></span></div>
   <div id="announce"></div>

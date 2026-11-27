@@ -14,7 +14,7 @@
   }
   if (!THREE_) { $('load-msg').innerHTML = 'Could not load the 3D engine (Three.js). Connect to the internet, or place <code>three.module.js</code> in <code>client/vendor/</code> (see README), then reload.'; return; }
   window.THREE = THREE_;
-  const files = ['audio', 'net', 'avatar', 'world', 'game', 'ui', 'screens', 'main'];
+  const files = ['audio', 'net', 'avatar', 'world', 'game', 'ui', 'screens', 'touch', 'main'];
   for (let i = 0; i < files.length; i++) {
     setP(0.5 + i / files.length * 0.5, 'Loading ' + files[i] + '…');
     await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'js/' + files[i] + '.js'; s.onload = res; s.onerror = () => rej(new Error('failed ' + files[i])); document.body.appendChild(s); });
