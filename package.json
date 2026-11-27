@@ -1,0 +1,13 @@
+{
+  "name": "the-ashen-crown",
+  "version": "1.0.0",
+  "description": "Browser-based 3D multiplayer tribute battle royale (Three.js client, authoritative Node.js server).",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node tests/mp.test.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "MIT"
+}

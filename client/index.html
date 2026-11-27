@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Ashen Crown — Tribute Battle Royale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="fx-vignette"></div>
+
+<!-- ============================ HUD ============================ -->
+<div id="hud" class="hidden">
+  <div id="hud-tl">
+    <div class="pill"><b id="h-alive">24</b><span>TRIBUTES</span></div>
+    <div class="pill"><b id="h-time">0:00</b><span>TIME</span></div>
+    <div class="pill" id="h-zone"><b id="h-zone-t">—</b><span id="h-zone-l">ZONE</span></div>
+    <div class="pill" id="h-kills"><b id="h-k">0</b><span>KILLS</span></div>
+  </div>
+  <div id="compass"><canvas id="compass-c" width="520" height="38"></canvas><div id="compass-mark"></div></div>
+  <div id="killfeed"></div>
+  <div id="objectives"></div>
+  <div id="crosshair"><i></i><i></i><i></i><i></i><u id="hitm"></u></div>
+  <div id="prompt"></div>
+  <div id="useBar"><div></div><span></span></div>
+  <div id="announce"></div>
+  <div id="toasts"></div>
+  <div id="countdown"></div>
+  <div id="spectate" class="hidden"><b>SPECTATING</b> <span id="spec-name"></span><small>Click to switch tribute · ESC for menu</small></div>
+  <div id="bars">
+    <div class="bar hp"><div id="b-hp"></div><span id="t-hp">100</span></div>
+    <div class="bar st"><div id="b-st"></div></div>
+    <div class="mini"><div class="bar hu"><div id="b-hu"></div></div><div class="bar th"><div id="b-th"></div></div></div>
+  </div>
+  <div id="hotbar"></div>
+  <div id="ammo"><div id="ammo-w"></div><div id="ammo-n"></div><div id="ammo-d"></div></div>
+  <div id="minimap"><canvas id="mm" width="200" height="200"></canvas></div>
+  <div id="ally-prompt" class="hidden"></div>
+  <div id="dmg-dirs"></div>
+  <div id="net-stat"></div>
+</div>
+
+<!-- ========================= Inventory ========================= -->
+<div id="inv" class="overlay hidden">
+  <div class="panel inv-panel">
+    <h2>INVENTORY <small>drag to rearrange · right-click to drop · double-click to use/equip</small></h2>
+    <div class="inv-body">
+      <div>
+        <div id="inv-grid"></div>
+        <div id="inv-armor"></div>
+      </div>
+      <div><h3>CRAFTING</h3><div id="craft-list"></div></div>
+    </div>
+    <div class="inv-foot"><span id="inv-info"></span><button class="btn small" id="inv-close">CLOSE (TAB)</button></div>
+  </div>
+</div>
+
+<!-- ======================== Pause menu ======================== -->
+<div id="pause" class="overlay hidden">
+  <div class="panel narrow">
+    <h2>PAUSED</h2>
+    <button class="btn" id="p-resume">RESUME</button>
+    <div class="set-row"><label>Mouse sensitivity</label><input type="range" id="p-sens" min="0.2" max="3" step="0.05"></div>
+    <div class="set-row"><label>Master volume</label><input type="range" id="p-vol" min="0" max="1" step="0.05"></div>
+    <button class="btn danger" id="p-quit">LEAVE MATCH</button>
+    <p class="hint" id="p-hint"></p>
+  </div>
+</div>
+
+<!-- ============================ UI ============================ -->
+<div id="ui"></div>
+<div id="modal" class="overlay hidden"><div class="panel" id="modal-box"></div></div>
+<div id="cine" class="hidden"></div>
+<div id="toast-global"></div>
+
+<noscript>This game needs JavaScript and WebGL.</noscript>
+
+<script src="../shared/constants.js"></script>
+<script src="../shared/catalog.js"></script>
+<script src="../shared/campaign.js"></script>
+<script src="../shared/terrain.js"></script>
+<script src="../shared/movement.js"></script>
+<script src="../shared/bots.js"></script>
+<script src="../shared/sim.js"></script>
+<script src="js/boot.js"></script>
+</body>
+</html>
