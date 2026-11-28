@@ -499,7 +499,9 @@ function handle(c, msg) {
 }
 
 /* ================================================================== boot */
-server.listen(PORT, () => log('Hunger Games server on http://localhost:' + PORT));
-process.on('SIGINT', () => { store.flush(); process.exit(0); });
-process.on('SIGTERM', () => { store.flush(); process.exit(0); });
-module.exports = { server, store, matches, status };
+const ready = store.init().then(() => {
+  server.listen(PORT, () => log('Hunger Games server on http://localhost:' + PORT + ' · saving to ' + store.backend + ' · ' + Object.keys(store.accounts).length + ' accounts loaded'));
+}).catch(e => { console.error('FATAL: could not reach the database — ' + e.message + '\nCheck UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.'); process.exit(1); });
+const bye = () => { Promise.resolve(store.flush()).then(() => process.exit(0), () => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
+process.on('SIGINT', bye); process.on('SIGTERM', bye);
+module.exports = { server, store, matches, status, ready };

@@ -22,6 +22,11 @@ Everyone opens the server's URL. One player uses **CREATE GAME**, shares the 5-l
 Behind a reverse proxy (nginx/Caddy) forward the `/ws` path with WebSocket upgrade headers; the client automatically uses `wss://` on HTTPS.
 
 ## Controls
+**Phones/tablets (landscape):** left thumb drag = move (push to the edge to sprint) · right side drag = look · ATTACK/SHOOT (hold) · AIM (toggle; aim + THROW throws a held spear/axe/knife) · JUMP / CROUCH / RELOAD / PICK UP · BAG = inventory (tap a slot, then USE / MOVE / DROP) · tap a hotbar slot to equip · ALLY · tap the minimap to enlarge · MENU (emote, break alliance, fullscreen). Touch mode switches on automatically on touch-first devices (add `?touch=1` to the URL to force it). Graphics default to Low on phones.
+
+**Crosshair:** dot for melee · four spread ticks for bow/crossbow (they widen when you move or sprint, tighten when aiming/crouching, and go red when the weapon is empty) · ring when aiming a throwable weapon. Shots are fired along the camera's line of sight, so arrows land on the crosshair.
+
+**Desktop:**
 WASD move · Mouse look · LMB attack/shoot · RMB aim · Shift sprint · Space jump · C crouch · E pick up/interact · R reload · Tab inventory (drag to rearrange, right-click drop, double-click use/equip, crafting panel) · 1-9 hotbar · Esc menu.
 
 ## What is implemented
@@ -50,8 +55,16 @@ data/      db.json (created at runtime — accounts, profiles, match history)
 ```
 `shared/` is loaded by both Node and the browser, so the offline practice mode runs the exact same simulation as the server.
 
+## Keeping accounts on free hosting (free Upstash database)
+Render's free plan wipes the disk on every redeploy/restart, so a local file loses accounts. Set these two environment variables and the server saves accounts, credits, cosmetics, sessions and match history to a free [Upstash](https://upstash.com) Redis database instead (nothing to install):
+| Variable | Value |
+|---|---|
+| `UPSTASH_REDIS_REST_URL` | the **REST URL** from your Upstash database page |
+| `UPSTASH_REDIS_REST_TOKEN` | the **REST Token** from the same page |
+Without them the server uses `data/db.json`. If they are set but wrong, the server refuses to start (so it never silently runs without saving). The startup log says `saving to remote (Upstash Redis)` and how many accounts were loaded. `npm run test:persist` proves accounts survive a restart.
+
 ## Notes & honest limitations
 * **Transport:** the spec suggested Express + Socket.IO. This build uses Node's built-in `http` plus the `ws` WebSocket library (same real-time, authoritative architecture, one small dependency) because it was developed in an environment where only `ws` could be installed. Swapping the transport touches `server/server.js` and `client/js/net.js` only.
-* **Database:** accounts, profiles and match history persist to `data/db.json` through a small atomic-write store (`server/db.js`). That is fine for a friends-and-community server; for a large public service replace `db.js` with SQLite/Postgres — the rest of the server only uses `store.accounts`, `store.sessions` and `store.addMatch`.
+* **Database:** accounts, profiles and match history persist to a free Upstash Redis database when configured (above), otherwise to `data/db.json` through a small atomic-write store (`server/db.js`). That is fine for a friends-and-community server; for a large public service replace `db.js` with SQLite/Postgres — the rest of the server only uses `store.accounts`, `store.sessions` and `store.addMatch`.
 * **Graphics** are stylised low-poly (blocky characters, simple foliage) to hold 60 FPS on ordinary hardware; there are no external art or sound assets.
 * Tested here with headless Chromium on a software renderer (so frame rate figures are not representative), including two separate browser clients in one match, plus the Node end-to-end test.

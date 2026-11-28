@@ -13,6 +13,7 @@ function client(name) {
 }
 const wait = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
+  await srv.ready;
   const a = await client('a'), b = await client('b');
   a.send({ t: 'register', user: 'Alice', pass: 'secret1' }); b.send({ t: 'register', user: 'Bobby', pass: 'secret2' });
   await wait(400); assert(a.authed && b.authed, 'auth'); assert.strictEqual(a.me.credits, 150);
