@@ -49,7 +49,14 @@ const active = new Map();                // lower user -> {m, pid}  (for reconne
 let matchCounter = 0;
 const status = () => ({ online: conns.size, inMatch: [...matches].reduce((n, m) => n + [...m.players.values()].filter(p => !p.isBot && !p.left).length, 0), rooms: rooms.size, matches: matches.size, version: 1 });
 
-function send(c, obj) { if (c.ws.readyState === 1) { try { c.ws.send(JSON.stringify(obj)); } catch (e) { /* ignore */ } } }
+/* Backpressure: if a player's connection can't keep up, stale snapshots would pile up in the socket buffer and show as seconds of lag.
+   Skip a snapshot instead (the next one is newer anyway) and tell the simulation so it can re-send any events that were in it. */
+const SNAP_BACKLOG = 24 * 1024;
+function send(c, obj) {
+  if (c.ws.readyState !== 1) return false;
+  if (obj.t === 'snap' && c.ws.bufferedAmount > SNAP_BACKLOG) { c.dropped = (c.dropped || 0) + 1; return false; }
+  try { c.ws.send(JSON.stringify(obj)); return true; } catch (e) { return false; }
+}
 function pushMe(c) { if (c.profile) send(c, { t: 'me', p: Eco.publicProfile(c.profile, now()), guest: !!c.guest }); }
 function save() { store.markDirty(); }
 const err = (c, m, k) => send(c, { t: 'err', m, k });
@@ -143,7 +150,7 @@ function findLand(world, x, z) {
 
 function makeMatch(opts) {
   const m = new Sim.Match(Object.assign({ id: 'M' + (++matchCounter) + '-' + crypto.randomBytes(3).toString('hex') }, opts, {
-    send: (pid, ev, d) => { const c = m.conns.get(pid); if (c && c.match === m) send(c, { t: ev, d }); },
+    send: (pid, ev, d) => { const c = m.conns.get(pid); return c && c.match === m ? send(c, { t: ev, d }) : true; },
   }));
   m.conns = new Map(); m.slots = new Map(); m.scripts = []; m.created = now(); m.cleanup = 0;
   return m;
@@ -504,4 +511,4 @@ const ready = store.init().then(() => {
 }).catch(e => { console.error('FATAL: could not reach the database — ' + e.message + '\nCheck UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.'); process.exit(1); });
 const bye = () => { Promise.resolve(store.flush()).then(() => process.exit(0), () => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
 process.on('SIGINT', bye); process.on('SIGTERM', bye);
-module.exports = { server, store, matches, status, ready };
+module.exports = { server, store, matches, status, ready, conns };

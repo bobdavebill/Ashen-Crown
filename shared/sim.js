@@ -749,7 +749,7 @@
         wt: this.weather.type, tod: R2((0.33 + this.t / 1100) % 1),
       };
       const evAll = this.evAll; this.evAll = [];
-      const full = this.tick % (C.SNAP_EVERY * 5) === 0;
+      const full = this.tick % (C.SNAP_EVERY * 5) === 0; let carry = null;
       for (const p of this.players.values()) {
         if (p.isBot || !p.connected) { this.evTo.delete(p.id); continue; }
         const ev = evAll.concat(this.evTo.get(p.id) || []); this.evTo.delete(p.id);
@@ -768,9 +768,10 @@
         const trs = []; for (const tr of this.traps) if (tr.tm === p.team || this.isAllied(tr.o, p.id) || dist2(tr.x, tr.z, p.x, p.z) < 100) trs.push({ i: tr.id, k: tr.kind, x: R2(tr.x), z: R2(tr.z), own: tr.tm === p.team ? 1 : 0 });
         msg.tr = trs;
         if (this.allies.size) { const s2 = this.allies.get(p.id); msg.al = s2 ? [...s2] : []; }
-        this.send(p.id, 'snap', msg);
+        if (this.send(p.id, 'snap', msg) === false) { p.invDirty = true; if (ev.length) (carry || (carry = new Map())).set(p.id, ev.slice(-60)); }   // connection backed up: keep events for the next snapshot
       }
       this.evTo.clear();
+      if (carry) for (const [id, ev] of carry) this.evTo.set(id, ev);
     }
   }
 
